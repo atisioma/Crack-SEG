@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Crack Training Dashboard</title>
+
+<style>
+
+body{
+    margin:0;
+    font-family: "Segoe UI",Roboto,Arial;
+    background:#0f172a;
+    color:#e5e7eb;
+}
+
+.container{
+    width:1100px;
+    margin:auto;
+    padding:40px;
+}
+
+.header{
+    font-size:28px;
+    font-weight:600;
+    margin-bottom:25px;
+}
+
+.card{
+    background:#1e293b;
+    border-radius:12px;
+    padding:25px;
+    margin-bottom:25px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.3);
+}
+
+.card-title{
+    font-size:18px;
+    margin-bottom:15px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:15px;
+}
+
+.input-group{
+    display:flex;
+    flex-direction:column;
+    font-size:13px;
+}
+
+.input-group label{
+    margin-bottom:5px;
+    color:#9ca3af;
+}
+
+input{
+    padding:8px;
+    border-radius:6px;
+    border:none;
+    background:#334155;
+    color:white;
+}
+
+button{
+    background:#3b82f6;
+    border:none;
+    padding:10px 20px;
+    border-radius:8px;
+    color:white;
+    font-weight:600;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#2563eb;
+}
+
+.controls{
+    margin-top:20px;
+}
+
+.status{
+    margin-top:10px;
+    color:#60a5fa;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th{
+    background:#334155;
+}
+
+th,td{
+    padding:10px;
+    text-align:center;
+    border-bottom:1px solid #475569;
+}
+
+tr:hover{
+    background:#273449;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+Crack Detection Training
+</div>
+
+<div class="card">
+
+<div class="card-title">Training Configuration</div>
+
+<div class="grid">
+
+<div class="input-group">
+<label>Epoch</label>
+<input id="epoch" value="10">
+</div>
+
+<div class="input-group">
+<label>Batch Size</label>
+<input id="batch_size" value="8">
+</div>
+
+<div class="input-group">
+<label>Learning Rate</label>
+<input id="lr" value="0.0001">
+</div>
+
+<div class="input-group">
+<label>Device</label>
+<input id="device" value="cuda">
+</div>
+
+<div class="input-group">
+<label>Val Size</label>
+<input id="val_size" value="0.2">
+</div>
+
+<div class="input-group">
+<label>LR Step Size</label>
+<input id="lr_step_size" value="50">
+</div>
+
+<div class="input-group">
+<label>LR Gamma</label>
+<input id="lr_gamma" value="0.85">
+</div>
+
+<div class="input-group">
+<label>Pretrain Model</label>
+<input id="pretrain_model" value="">
+</div>
+
+<div class="input-group">
+<label>Save Path</label>
+<input id="save_path" value="../checkpoints/sg_last_ckpt.pth">
+</div>
+
+<div class="input-group">
+<label>Image Dir</label>
+<input id="img_dir" value="../data/train_img">
+</div>
+
+<div class="input-group">
+<label>Num Classes</label>
+<input id="num_cls" value="2">
+</div>
+
+</div>
+
+<div class="controls">
+
+<button onclick="startTrain()">Start Training</button>
+
+<div class="status" id="status">
+Status: Idle
+</div>
+
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="card-title">Training Results</div>
+
+<table id="result">
+
+<tr>
+<th>Epoch</th>
+<th>Loss</th>
+<th>Dice</th>
+<th>IoU</th>
+</tr>
+
+</table>
+
+</div>
+
+</div>
+
+
+<script>
+
+let training=false
+
+function buildConfig(){
+
+return {
+
+Train:{
+
+epoch:parseInt(document.getElementById("epoch").value),
+
+batch_size:parseInt(document.getElementById("batch_size").value),
+
+learning_rate:parseFloat(document.getElementById("lr").value),
+
+device:document.getElementById("device").value,
+
+val_size:parseFloat(document.getElementById("val_size").value),
+
+pretrain_model:document.getElementById("pretrain_model").value,
+
+save_path:document.getElementById("save_path").value,
+
+lr_step_size:parseInt(document.getElementById("lr_step_size").value),
+
+lr_gamma:parseFloat(document.getElementById("lr_gamma").value)
+
+},
+
+Data:{
+
+img_dir:document.getElementById("img_dir").value,
+
+num_cls:parseInt(document.getElementById("num_cls").value)
+
+}
+
+}
+
+}
+
+
+
+async function startTrain(){
+
+let config=buildConfig()
+
+document.getElementById("status").innerText="Status: Initializing..."
+
+await fetch("/train_start",{
+
+method:"POST",
+
+headers:{"Content-Type":"application/json"},
+
+body:JSON.stringify(config)
+
+})
+
+training=true
+
+trainLoop()
+
+}
+
+
+
+async function trainLoop(){
+
+while(training){
+
+let res=await fetch("/train_epoch",{method:"POST"})
+
+let data=await res.json()
+
+if(data.msg==="training finished"){
+
+document.getElementById("status").innerText="Training Finished"
+
+training=false
+
+break
+}
+
+addRow(data)
+
+document.getElementById("status").innerText=
+"Training Epoch "+data.epoch
+
+}
+
+}
+
+
+
+function addRow(data){
+
+let table=document.getElementById("result")
+
+let row=table.insertRow()
+
+row.insertCell(0).innerText=data.epoch
+row.insertCell(1).innerText=data.loss.toFixed(4)
+row.insertCell(2).innerText=data.dice.toFixed(4)
+row.insertCell(3).innerText=data.iou.toFixed(4)
+
+}
+
+</script>
+
+</body>
+</html>

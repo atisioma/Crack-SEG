@@ -1,0 +1,9 @@
+torch
+torchvision
+opencv-python
+PYyaml
+tqdm
+fastapi
+uvicorn
+python-multipart
+# pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
